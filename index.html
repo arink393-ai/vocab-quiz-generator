@@ -63,8 +63,15 @@
   .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 
   .seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
-  .seg button{flex:1;border:none;background:#fff;padding:9px 6px;font-family:inherit;font-size:13px;color:var(--ink-soft);cursor:pointer}
+  .seg button{flex:1;border:none;border-left:1px solid var(--line);background:#fff;padding:9px 4px;font-family:inherit;font-size:12px;color:var(--ink-soft);cursor:pointer}
+  .seg button:first-child{border-left:none}
   .seg button.on{background:var(--accent);color:#fff;font-weight:600}
+
+  .photo-btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;
+    border:1.4px dashed var(--accent);border-radius:9px;padding:11px;margin-bottom:8px;
+    background:var(--accent-soft);color:var(--accent);font-family:inherit;font-size:13.5px;font-weight:600;cursor:pointer;transition:filter .15s}
+  .photo-btn:hover{filter:brightness(.98)}
+  .photo-btn:disabled{opacity:.6;cursor:not-allowed}
 
   .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;width:100%;
     border:none;border-radius:9px;padding:12px 16px;font-family:inherit;font-size:14.5px;font-weight:600;cursor:pointer;transition:filter .15s}
@@ -77,6 +84,11 @@
   .btn-row .btn{margin-top:0}
 
   #aiBox,#manualBox{margin-top:10px}
+  .thumbs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .thumbs img{width:54px;height:54px;object-fit:cover;border-radius:6px;border:1px solid var(--line)}
+  .ai-row{display:flex;gap:8px;margin-top:8px}
+  .ai-row select{flex:1}
+  .keylink{color:var(--accent);font-weight:600}
   .sent-input{display:flex;align-items:center;gap:8px;margin-bottom:7px}
   .sent-input .num{font-size:12px;color:var(--accent);font-weight:700;min-width:54px}
   .sent-input input{flex:1}
@@ -179,7 +191,35 @@
     </div>
 
     <div class="field">
+      <label>AI 設定（Gemini 免費 API）</label>
+      <input type="password" id="geminiKey" placeholder="貼上你的 Gemini API 金鑰（AIza...）" autocomplete="off">
+      <div class="ai-row">
+        <select id="geminiModel">
+          <option value="gemini-2.5-flash">Gemini 2.5 Flash（預設・品質佳）</option>
+          <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite（更快・每日額度高）</option>
+        </select>
+        <button class="btn ghost" id="testKeyBtn" style="width:auto;padding:9px 14px">測試</button>
+      </div>
+      <div class="status" id="keyStatus"></div>
+      <div class="hint">免費申請：到 <a class="keylink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a> 登入 Google 帳號 → Create API key，把金鑰貼上即可。金鑰只存在你的瀏覽器本機、不會外傳，下次開啟會自動帶入。</div>
+    </div>
+
+    <div class="field">
       <label>單字表</label>
+      <div class="seg" id="wordSrcSeg" style="margin-bottom:8px">
+        <button data-wsrc="manual" class="on">✏️ 手動輸入</button>
+        <button data-wsrc="photo">📷 拍照辨識</button>
+      </div>
+
+      <div id="photoBox" style="display:none;margin-bottom:8px">
+        <label class="photo-btn" for="photoInput">📷 選擇或拍攝課本照片</label>
+        <input type="file" id="photoInput" accept="image/*" capture="environment" multiple hidden>
+        <div id="thumbs" class="thumbs"></div>
+        <button class="btn ghost" id="ocrBtn" style="width:100%;margin-top:8px" disabled>辨識照片中的單字與例句</button>
+        <div class="status" id="ocrStatus"></div>
+        <div class="hint">AI 會抓出英文、中文，並把課本例句挖空當第二大題。一次拍清楚 4～6 個單字效果最好，可多拍幾張累積。需先在上方填入 Gemini 金鑰並連網路。</div>
+      </div>
+
       <textarea id="words" spellcheck="false"></textarea>
       <div class="hint">每行一個單字，英文在前、中文在後，中間用空格／逗號／Tab 皆可。例：<br><code>apple 蘋果</code>　或　<code>give up，放棄</code></div>
     </div>
@@ -197,7 +237,8 @@
     <div class="field">
       <label>第二大題句子來源</label>
       <div class="seg" id="srcSeg">
-        <button data-src="ai" class="on">✨ AI 自動生成</button>
+        <button data-src="ai" class="on">✨ AI 生成</button>
+        <button data-src="photo">📷 課本例句</button>
         <button data-src="manual">✏️ 自己輸入</button>
       </div>
     </div>
@@ -210,7 +251,7 @@
           <option value="junior high school" selected>國中</option>
           <option value="senior high school">高中</option>
         </select>
-        <div class="hint">AI 生成需在 Claude 中開啟此檔才能運作；下載離線使用時請改用「自己輸入」。</div>
+        <div class="hint">AI 生成使用你上方填入的 Gemini 免費金鑰，需連網路；沒有金鑰時請改用「自己輸入」。</div>
       </div>
     </div>
 
@@ -219,6 +260,12 @@
         <label>填空句子（用底線 <code>___</code> 代表空格）</label>
         <div id="manualInputs"></div>
         <div class="hint">句子要對應第一大題的英文單字，順序相同。空格寫成 <code>___</code>。</div>
+      </div>
+    </div>
+
+    <div id="photoSrcBox" style="display:none">
+      <div class="field" style="margin-top:6px">
+        <div class="hint">將使用「拍照辨識」抓到的課本例句，挖空第一大題抽到的單字。若某個字沒有對應例句，會留空白行。請先在上方完成拍照辨識。</div>
       </div>
     </div>
 
@@ -311,8 +358,9 @@ ready 準備好的`;
     const b = e.target.closest('button'); if(!b) return;
     state.source = b.dataset.src;
     [...$('srcSeg').children].forEach(c=>c.classList.toggle('on', c===b));
-    $('aiBox').style.display    = state.source==='ai' ? '' : 'none';
-    $('manualBox').style.display= state.source==='manual' ? '' : 'none';
+    $('aiBox').style.display     = state.source==='ai' ? '' : 'none';
+    $('manualBox').style.display = state.source==='manual' ? '' : 'none';
+    $('photoSrcBox').style.display = state.source==='photo' ? '' : 'none';
     if(state.source==='manual') buildManualInputs();
   });
 
@@ -333,6 +381,64 @@ ready 準備好的`;
   }
   $('n1').addEventListener('input', ()=>{ if(state.source==='manual') buildManualInputs(); });
 
+  /* ---------- Gemini 免費 API ---------- */
+  const getKey   = ()=> ($('geminiKey').value||'').trim();
+  const getModel = ()=> $('geminiModel').value;
+
+  async function geminiGenerate(parts, opt){
+    opt = opt||{};
+    const key = getKey();
+    if(!key) throw new Error('尚未填入 Gemini 金鑰');
+    const body = {
+      contents:[{parts}],
+      generationConfig:{
+        temperature: opt.temperature ?? 0.5,
+        maxOutputTokens: opt.maxTokens ?? 2048
+      }
+    };
+    if(opt.json) body.generationConfig.responseMimeType = 'application/json';
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${getModel()}:generateContent`,
+      { method:'POST',
+        headers:{'Content-Type':'application/json','x-goog-api-key':key},
+        body:JSON.stringify(body) });
+    if(!res.ok){
+      let msg='API '+res.status;
+      try{ const e=await res.json(); if(e.error&&e.error.message) msg=e.error.message; }catch(_){}
+      if(res.status===429) msg='已達免費額度上限，請稍後再試或換 Flash-Lite 模型';
+      throw new Error(msg);
+    }
+    const d = await res.json();
+    const cand = d.candidates && d.candidates[0];
+    const txt = cand && cand.content && cand.content.parts
+      ? cand.content.parts.map(p=>p.text||'').join('') : '';
+    if(!txt) throw new Error('沒有回傳內容'+(cand&&cand.finishReason?'（'+cand.finishReason+'）':''));
+    return txt;
+  }
+
+  function parseJsonArray(text){
+    let t = text.replace(/```json|```/g,'').trim();
+    const s=t.indexOf('['), e=t.lastIndexOf(']');
+    if(s>=0 && e>s) t=t.slice(s,e+1);
+    return JSON.parse(t);
+  }
+
+  // 金鑰／模型記憶（本機，沙箱中失敗則略過）
+  try{
+    const sk=localStorage.getItem('vq_gemini_key');   if(sk) $('geminiKey').value=sk;
+    const sm=localStorage.getItem('vq_gemini_model'); if(sm) $('geminiModel').value=sm;
+  }catch(_){}
+  $('geminiKey').addEventListener('change',()=>{ try{localStorage.setItem('vq_gemini_key',getKey());}catch(_){}});
+  $('geminiModel').addEventListener('change',()=>{ try{localStorage.setItem('vq_gemini_model',getModel());}catch(_){}});
+  $('testKeyBtn').addEventListener('click', async ()=>{
+    const st=$('keyStatus');
+    if(!getKey()){ st.className='status err'; st.textContent='請先貼上金鑰'; return; }
+    st.className='status'; st.innerHTML='<span class="spinner"></span>測試連線中…';
+    try{ await geminiGenerate([{text:'Reply with: OK'}], {maxTokens:10});
+      st.className='status ok'; st.textContent='金鑰可用 ✓'; }
+    catch(err){ st.className='status err'; st.textContent='測試失敗：'+err.message; }
+  });
+
   /* ---------- AI 生成句子 ---------- */
   async function aiSentences(words, level){
     const list = words.map(w=>w.en).join(', ');
@@ -343,16 +449,8 @@ Words: ${list}
 Return ONLY a JSON array, no markdown, no extra text:
 [{"word":"apple","sentence":"I ate a sweet ________ after lunch."}]`;
 
-    const res = await fetch("https://api.anthropic.com/v1/messages",{
-      method:"POST", headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({ model:"claude-sonnet-4-6", max_tokens:1000,
-        messages:[{role:"user",content:prompt}] })
-    });
-    if(!res.ok) throw new Error("API "+res.status);
-    const data = await res.json();
-    const text = data.content.filter(b=>b.type==='text').map(b=>b.text).join('');
-    const clean = text.replace(/```json|```/g,'').trim();
-    const arr = JSON.parse(clean);
+    const text = await geminiGenerate([{text:prompt}], {json:true, maxTokens:2048, temperature:0.6});
+    const arr = parseJsonArray(text);
     // 依輸入順序對齊；缺漏時補空白句
     return words.map((w,i)=>{
       let s = (arr[i] && arr[i].sentence) || '';
@@ -373,10 +471,22 @@ Return ONLY a JSON array, no markdown, no extra text:
     });
   }
 
+  // 拍照辨識取得的課本例句：key = 小寫英文headword -> {sentence, answer}
+  let sentenceMap = {};
+  function photoSentences(words){
+    return words.map(w=>{
+      const hit = sentenceMap[w.en.toLowerCase()];
+      if(hit && hit.sentence && /_{2,}/.test(hit.sentence))
+        return { sentence:hit.sentence, answer:hit.answer || w.en };
+      return { sentence:'________', answer:w.en }; // 無對應例句時留空白
+    });
+  }
+
   /* ---------- 產生 ---------- */
   let lastPool = null; // 記住目前抽到的字，供「重新抽題」用
   async function generate(reshuffleOnly){
     const status = $('status');
+    let genNote='';
     const words = parseWords($('words').value);
     const n1 = Math.max(1, parseInt($('n1').value)||5);
     const n3 = Math.max(0, parseInt($('n3').value)||0);
@@ -404,11 +514,15 @@ Return ONLY a JSON array, no markdown, no extra text:
         sec2 = await aiSentences(sec1, $('level').value);
       }catch(err){
         status.className='status err';
-        status.textContent='AI 生成失敗（'+err.message+'）。若為離線使用，請改用「自己輸入」模式。';
+        status.textContent='AI 生成失敗（'+err.message+'）。請確認 Gemini 金鑰與網路，或改用「自己輸入」模式。';
         $('genBtn').disabled=false; $('reshuffleBtn').disabled=false;
         return;
       }
       $('genBtn').disabled=false; $('reshuffleBtn').disabled=false;
+    } else if(state.source==='photo'){
+      sec2 = photoSentences(sec1);
+      const missing = sec2.filter(s=>s.sentence==='________').length;
+      if(missing) genNote=`（${missing} 個字無課本例句，已留空白行，可「重新抽題」換字或補拍）`;
     } else {
       sec2 = manualSentences(sec1);
     }
@@ -421,7 +535,7 @@ Return ONLY a JSON array, no markdown, no extra text:
     };
     render();
     status.className='status ok';
-    status.textContent='完成！可切換「題目卷／答案卷」並列印。';
+    status.textContent='完成！可切換「題目卷／答案卷」並列印。'+(genNote?'　'+genNote:'');
   }
 
   $('genBtn').addEventListener('click', ()=>generate(false));
@@ -523,6 +637,98 @@ Return ONLY a JSON array, no markdown, no extra text:
   $('printBtn').addEventListener('click', ()=>{
     if(!state.quiz){ $('status').className='status err'; $('status').textContent='請先產生考卷再列印。'; return; }
     window.print();
+  });
+
+  /* ---------- 拍照辨識單字 ---------- */
+  $('wordSrcSeg').addEventListener('click', e=>{
+    const b=e.target.closest('button'); if(!b) return;
+    [...$('wordSrcSeg').children].forEach(c=>c.classList.toggle('on', c===b));
+    const photo = b.dataset.wsrc==='photo';
+    $('photoBox').style.display = photo ? '' : 'none';
+    // 第一次切到拍照、且還是預設範例時，清空讓辨識結果乾淨呈現
+    if(photo && $('words').value.trim()===sampleClean.trim()) $('words').value='';
+  });
+
+  let photoFiles = [];
+  $('photoInput').addEventListener('change', e=>{
+    [...e.target.files].forEach(f=>{ if(f.type.startsWith('image/')) photoFiles.push(f); });
+    e.target.value='';
+    renderThumbs();
+  });
+  function renderThumbs(){
+    const box=$('thumbs'); box.innerHTML='';
+    photoFiles.forEach((f,i)=>{
+      const img=document.createElement('img');
+      img.src=URL.createObjectURL(f);
+      img.title='點擊移除';
+      img.onclick=()=>{ photoFiles.splice(i,1); renderThumbs(); };
+      box.appendChild(img);
+    });
+    $('ocrBtn').disabled = photoFiles.length===0;
+  }
+
+  function fileToBase64(file){
+    return new Promise((res,rej)=>{
+      const r=new FileReader();
+      r.onload=()=>res(r.result.split(',')[1]);
+      r.onerror=()=>rej(new Error('讀取圖片失敗'));
+      r.readAsDataURL(file);
+    });
+  }
+
+  async function ocrImage(file){
+    const data = await fileToBase64(file);
+    const mt = file.type || 'image/jpeg';
+    const prompt =
+`This is a page from a Taiwanese English textbook vocabulary list. Extract every English vocabulary headword shown (the bold/numbered entries and their derived forms such as the noun/verb forms). Ignore phonetic symbols inside [ ], and do NOT create separate entries from the blue 要點解說 / 補充精要 phrase boxes.
+For each headword return an object:
+- "word": the English headword exactly as printed in base form (e.g. "announce", "announcement", "research", "flavor").
+- "meaning": its Traditional Chinese meaning, kept short (e.g. "宣布","公告","研究","味道").
+- "sentence": ONE example English sentence for that word taken from the page (the bullet "•" examples). Replace the target word, in whatever inflected form it appears, with exactly "________" (8 underscores). If there is no example sentence for it, use "".
+- "answer": the exact word form that was removed from the sentence (e.g. "announced","researching"). If sentence is "", use the headword.
+Return ONLY a JSON array, no markdown, no extra text:
+[{"word":"announce","meaning":"宣布","sentence":"This boxer has ________ that he will retire.","answer":"announced"}]`;
+
+    const text = await geminiGenerate([
+      {text:prompt},
+      {inline_data:{mime_type:mt, data}}
+    ], {json:true, maxTokens:4096, temperature:0.2});
+    return parseJsonArray(text);
+  }
+
+  $('ocrBtn').addEventListener('click', async ()=>{
+    if(!photoFiles.length) return;
+    const st=$('ocrStatus');
+    $('ocrBtn').disabled=true;
+    let added=0, withSent=0, idx=0;
+    try{
+      for(const f of photoFiles){
+        idx++;
+        st.className='status'; st.innerHTML=`<span class="spinner"></span>辨識第 ${idx}/${photoFiles.length} 張…`;
+        const arr = await ocrImage(f);
+        const lines=[];
+        arr.forEach(it=>{
+          const en=(it.word||'').trim(), zh=(it.meaning||'').trim();
+          if(!en||!zh) return;
+          lines.push(en+' '+zh);
+          if(it.sentence && /_{2,}/.test(it.sentence)){
+            sentenceMap[en.toLowerCase()]={sentence:it.sentence.trim(), answer:(it.answer||en).trim()};
+            withSent++;
+          }
+          added++;
+        });
+        const ta=$('words');
+        const existing = new Set(parseWords(ta.value).map(w=>w.en.toLowerCase()));
+        const fresh = lines.filter(l=>{ const p=parseWords(l)[0]; return p && !existing.has(p.en.toLowerCase()); });
+        if(fresh.length) ta.value = (ta.value.trim()? ta.value.replace(/\s*$/,'')+'\n' : '') + fresh.join('\n');
+      }
+      st.className='status ok'; st.textContent=`辨識完成：新增 ${added} 個單字，其中 ${withSent} 個有課本例句。`;
+      const photoBtn=[...$('srcSeg').children].find(b=>b.dataset.src==='photo');
+      if(photoBtn) photoBtn.click(); // 自動切到「課本例句」
+    }catch(err){
+      st.className='status err'; st.textContent='辨識失敗（'+err.message+'）。請確認 Gemini 金鑰與網路、照片清晰，或減少單字數重拍。';
+    }
+    $('ocrBtn').disabled=false;
   });
 
   // 初始：依預設來源建立手動輸入框（隱藏狀態也先備好）
