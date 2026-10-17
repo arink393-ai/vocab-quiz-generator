@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="單字測驗">
+  <rect width="512" height="512" rx="104" fill="#0f766e"/>
+  <rect x="112" y="96" width="288" height="320" rx="20" fill="#ffffff"/>
+  <rect x="150" y="150" width="150" height="20" rx="10" fill="#0f766e"/>
+  <rect x="150" y="206" width="212" height="16" rx="8" fill="#94b8b2"/>
+  <rect x="150" y="248" width="212" height="16" rx="8" fill="#94b8b2"/>
+  <rect x="150" y="290" width="150" height="16" rx="8" fill="#94b8b2"/>
+  <path d="M330 300 l34 34 l68 -78" fill="none" stroke="#c2410c" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

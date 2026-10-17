@@ -4,6 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>單字測驗自動生成器</title>
+<meta name="description" content="貼上單字表，自動排出三大題英文單字考卷與答案卷，支援多卷防作弊、AI 例句、拍照辨識，可離線安裝使用。">
+<meta name="theme-color" content="#0f766e">
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./icon.svg">
 <style>
   :root{
     --ink:#1c2733;
@@ -41,7 +46,7 @@
     position:sticky;top:24px;
   }
   @media (max-width:980px){.panel{position:static}}
-  .brand{display:flex;align-items:baseline;gap:10px;margin:0 0 4px}
+  .brand{display:flex;align-items:baseline;gap:10px;margin:0 0 4px;flex-wrap:wrap}
   .brand h1{font-size:20px;margin:0;letter-spacing:-.01em}
   .brand .tag{font-size:12px;color:var(--accent);font-weight:600;background:var(--accent-soft);padding:2px 8px;border-radius:999px}
   .sub{font-size:12.5px;color:var(--ink-soft);margin:0 0 18px}
@@ -49,11 +54,11 @@
   .field{margin-bottom:16px}
   .field > label{display:block;font-size:12.5px;font-weight:600;color:var(--ink-soft);margin-bottom:6px}
   .hint{font-size:11.5px;color:var(--ink-soft);font-weight:400;margin-top:5px;line-height:1.45}
-  input[type=text],textarea,select{
+  input[type=text],input[type=password],textarea,select{
     width:100%;font-family:inherit;font-size:14px;color:var(--ink);
     border:1px solid var(--line);border-radius:8px;padding:9px 11px;background:#fff;
   }
-  input[type=text]:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+  input[type=text]:focus,input[type=password]:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
   textarea{resize:vertical;line-height:1.6}
   textarea#words{min-height:150px;font-family:"SFMono-Regular",Menlo,Consolas,monospace;font-size:13px}
 
@@ -61,6 +66,7 @@
   .row .field{flex:1}
 
   .meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .quad-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 
   .seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
   .seg button{flex:1;border:none;border-left:1px solid var(--line);background:#fff;padding:9px 4px;font-family:inherit;font-size:12px;color:var(--ink-soft);cursor:pointer}
@@ -71,7 +77,6 @@
     border:1.4px dashed var(--accent);border-radius:9px;padding:11px;margin-bottom:8px;
     background:var(--accent-soft);color:var(--accent);font-family:inherit;font-size:13.5px;font-weight:600;cursor:pointer;transition:filter .15s}
   .photo-btn:hover{filter:brightness(.98)}
-  .photo-btn:disabled{opacity:.6;cursor:not-allowed}
 
   .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;width:100%;
     border:none;border-radius:9px;padding:12px 16px;font-family:inherit;font-size:14.5px;font-weight:600;cursor:pointer;transition:filter .15s}
@@ -83,15 +88,25 @@
   .btn-row{display:flex;gap:10px;margin-top:4px}
   .btn-row .btn{margin-top:0}
 
+  /* 單字書管理列 */
+  .lists{display:flex;gap:6px;margin-bottom:8px}
+  .lists select{flex:1}
+  .lists button{flex:0 0 auto;border:1px solid var(--line);background:#fff;border-radius:8px;padding:0 11px;font-family:inherit;font-size:12.5px;color:var(--ink);cursor:pointer}
+  .lists button:hover{background:#f6f8f9}
+
   #aiBox,#manualBox{margin-top:10px}
   .thumbs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
-  .thumbs img{width:54px;height:54px;object-fit:cover;border-radius:6px;border:1px solid var(--line)}
+  .thumbs img{width:54px;height:54px;object-fit:cover;border-radius:6px;border:1px solid var(--line);cursor:pointer}
   .ai-row{display:flex;gap:8px;margin-top:8px}
   .ai-row select{flex:1}
   .keylink{color:var(--accent);font-weight:600}
   .sent-input{display:flex;align-items:center;gap:8px;margin-bottom:7px}
-  .sent-input .num{font-size:12px;color:var(--accent);font-weight:700;min-width:54px}
+  .sent-input .num{font-size:12px;color:var(--accent);font-weight:700;min-width:64px;max-width:96px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .sent-input input{flex:1}
+  .manual-scroll{max-height:260px;overflow:auto;padding-right:2px}
+  .check-row{display:flex;flex-wrap:wrap;gap:12px;font-size:12.5px;color:var(--ink-soft)}
+  .check-row label{display:inline-flex;align-items:center;gap:5px;font-weight:600;cursor:pointer}
+  .check-row input{width:auto;margin:0}
   .status{font-size:12.5px;margin-top:8px;min-height:18px}
   .status.err{color:var(--answer)}
   .status.ok{color:var(--accent)}
@@ -102,10 +117,13 @@
 
   /* ---------- 考卷預覽 ---------- */
   .stage{min-width:0}
-  .stage-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:12px;flex-wrap:wrap}
+  .stage-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px;flex-wrap:wrap}
+  .stage-bar .left{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
   .stage-bar .view-toggle{display:flex;gap:0;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:#fff}
   .stage-bar .view-toggle button{border:none;background:#fff;padding:8px 16px;font-family:inherit;font-size:13px;font-weight:600;color:var(--ink-soft);cursor:pointer}
   .stage-bar .view-toggle button.on{background:var(--ink);color:#fff}
+  .stage-bar #verSel{padding:8px 12px;font-size:13px;font-weight:600}
+  .stage-bar .print-row{display:flex;gap:8px;flex-wrap:wrap}
 
   .paper{
     background:var(--paper);
@@ -120,7 +138,6 @@
     color:#000;
     font-size:14px;
   }
-  .paper.empty{min-height:320px}
   .paper.empty{display:flex;align-items:center;justify-content:center;min-height:320px;color:var(--ink-soft);text-align:center;font-size:14px}
 
   /* 卷頭 */
@@ -131,10 +148,11 @@
   .ph-head .cell .ln{display:inline-block;min-width:56px;border-bottom:1px solid #000;height:13px;vertical-align:bottom}
   .ph-head .cell.score{margin-left:auto}
   .ph-title{text-align:center;font-size:21px;font-weight:800;letter-spacing:.04em;margin:2px 0 4px}
+  .ph-title .ver{font-size:15px;color:#444;font-weight:700;margin-left:6px}
   .ph-sub{text-align:center;font-size:12.5px;color:#444;margin-bottom:20px}
 
   .q{margin-bottom:18px;page-break-inside:avoid}
-  .q-h{font-size:15px;font-weight:800;margin:0 0 3px;display:flex;align-items:baseline;gap:8px}
+  .q-h{font-size:15px;font-weight:800;margin:0 0 3px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
   .q-h .pts{font-size:11.5px;font-weight:600;color:#555}
   .q-desc{font-size:12px;color:#555;margin:0 0 9px}
 
@@ -166,6 +184,9 @@
 
   .foot-note{font-size:11px;color:#999;text-align:center;margin-top:18px}
 
+  /* 批次列印容器（平時隱藏） */
+  #printArea{display:none}
+
   /* ---------- 列印 ---------- */
   @media print{
     body{background:#fff}
@@ -174,6 +195,11 @@
     .paper{border:none;box-shadow:none;border-radius:0;padding:0;font-size:14px;width:auto;max-width:none;min-height:auto;margin:0}
     @page{size:A4;margin:14mm}
     .q{margin-bottom:22px}
+    /* 批次列印：隱藏主畫面，只印 printArea，各卷自動換頁 */
+    body.print-batch .wrap{display:none!important}
+    body.print-batch #printArea{display:block!important}
+    #printArea .paper{page-break-after:always}
+    #printArea .paper:last-child{page-break-after:auto}
   }
 </style>
 </head>
@@ -182,8 +208,8 @@
 
   <!-- ===== 控制面板 ===== -->
   <aside class="panel">
-    <div class="brand"><h1>單字測驗生成器</h1><span class="tag">離線可用</span></div>
-    <p class="sub">貼上單字表，自動排出三大題考卷與答案卷，可直接列印或投影。</p>
+    <div class="brand"><h1>單字測驗生成器</h1><span class="tag">離線可安裝</span></div>
+    <p class="sub">貼上單字表，自動排出三大題考卷與答案卷。支援多卷防作弊、AI 例句、拍照辨識，可直接列印或投影。</p>
 
     <div class="meta-grid">
       <div class="field"><label>考卷標題</label><input type="text" id="qTitle" value="英文單字小考"></div>
@@ -201,11 +227,19 @@
         <button class="btn ghost" id="testKeyBtn" style="width:auto;padding:9px 14px">測試</button>
       </div>
       <div class="status" id="keyStatus"></div>
-      <div class="hint">免費申請：到 <a class="keylink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a> 登入 Google 帳號 → Create API key，把金鑰貼上即可。金鑰只存在你的瀏覽器本機、不會外傳，下次開啟會自動帶入。</div>
+      <div class="hint">免費申請：到 <a class="keylink" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a> 登入 Google 帳號 → Create API key，把金鑰貼上即可。金鑰只存在你的瀏覽器本機、不會外傳，下次開啟自動帶入。</div>
     </div>
 
     <div class="field">
       <label>單字表</label>
+
+      <div class="lists">
+        <select id="listSel" title="載入已儲存的單字書"></select>
+        <button id="loadListBtn" title="載入選取的單字書">載入</button>
+        <button id="saveListBtn" title="把目前單字表存成單字書">另存</button>
+        <button id="delListBtn" title="刪除選取的單字書">刪除</button>
+      </div>
+
       <div class="seg" id="wordSrcSeg" style="margin-bottom:8px">
         <button data-wsrc="manual" class="on">✏️ 手動輸入</button>
         <button data-wsrc="photo">📷 拍照辨識</button>
@@ -217,19 +251,24 @@
         <div id="thumbs" class="thumbs"></div>
         <button class="btn ghost" id="ocrBtn" style="width:100%;margin-top:8px" disabled>辨識照片中的單字與例句</button>
         <div class="status" id="ocrStatus"></div>
-        <div class="hint">AI 會抓出英文、中文，並把課本例句挖空當第二大題。一次拍清楚 4～6 個單字效果最好，可多拍幾張累積。需先在上方填入 Gemini 金鑰並連網路。</div>
+        <div class="hint">AI 會抓出英文、中文，並把課本例句挖空存入例句庫。一次拍清楚 4～6 個單字效果最好，可多拍幾張累積。需先在上方填入 Gemini 金鑰並連網路。</div>
       </div>
 
       <textarea id="words" spellcheck="false"></textarea>
       <div class="hint">每行一個單字，英文在前、中文在後，中間用空格／逗號／Tab 皆可。例：<br><code>apple 蘋果</code>　或　<code>give up，放棄</code></div>
     </div>
 
-    <div class="row">
-      <div class="field"><label>第一大題單字數</label><input type="text" id="n1" value="5" inputmode="numeric"></div>
-      <div class="field"><label>第三大題單字數</label><input type="text" id="n3" value="5" inputmode="numeric"></div>
+    <div class="quad-grid">
+      <div class="field"><label>第一大題字數</label><input type="text" id="n1" value="5" inputmode="numeric"></div>
+      <div class="field"><label>第三大題字數</label><input type="text" id="n3" value="5" inputmode="numeric"></div>
+      <div class="field"><label>產生份數（防作弊）</label><input type="text" id="copies" value="1" inputmode="numeric"></div>
+      <div class="field"><label>總分</label><input type="text" id="total" value="100" inputmode="numeric"></div>
     </div>
     <div class="field" style="margin-top:-4px">
-      <div class="hint">第一大題：看英文寫中文｜第二大題：用第一大題單字做英文句子填空｜第三大題：看中文寫英文（與第一大題不重複）</div>
+      <div class="check-row">
+        <label><input type="checkbox" id="incFill" checked> 包含第二大題（句子填空）</label>
+      </div>
+      <div class="hint">第一大題：看英文寫中文｜第二大題：用第一大題單字做英文句子填空｜第三大題：看中文寫英文（與第一大題不重複）。份數 ≥ 2 時每卷單字順序、單字庫順序都會洗牌，適合發不同排防抄襲。</div>
     </div>
 
     <hr class="div">
@@ -251,21 +290,21 @@
           <option value="junior high school" selected>國中</option>
           <option value="senior high school">高中</option>
         </select>
-        <div class="hint">AI 生成使用你上方填入的 Gemini 免費金鑰，需連網路；沒有金鑰時請改用「自己輸入」。</div>
+        <div class="hint">AI 生成使用你上方填入的 Gemini 免費金鑰，需連網路；沒有金鑰時請改用「自己輸入」。例句會依單字存入例句庫，多卷／重新抽題時自動重用、不會重複呼叫。</div>
       </div>
     </div>
 
     <div id="manualBox" style="display:none">
       <div class="field">
-        <label>填空句子（用底線 <code>___</code> 代表空格）</label>
-        <div id="manualInputs"></div>
-        <div class="hint">句子要對應第一大題的英文單字，順序相同。空格寫成 <code>___</code>。</div>
+        <label>為每個單字寫一句例句（用底線 <code>___</code> 代表空格）</label>
+        <div id="manualInputs" class="manual-scroll"></div>
+        <div class="hint">每個單字一欄，可只填你要考的幾個；空著的字若被抽到第二大題會留空白行。空格寫成 <code>___</code>，沒寫系統會自動補在句尾。</div>
       </div>
     </div>
 
     <div id="photoSrcBox" style="display:none">
       <div class="field" style="margin-top:6px">
-        <div class="hint">將使用「拍照辨識」抓到的課本例句，挖空第一大題抽到的單字。若某個字沒有對應例句，會留空白行。請先在上方完成拍照辨識。</div>
+        <div class="hint">將使用「拍照辨識」存入例句庫的課本例句；某個字若沒有對應例句會留空白行。請先在上方完成拍照辨識。</div>
       </div>
     </div>
 
@@ -273,7 +312,7 @@
 
     <div class="btn-row">
       <button class="btn primary" id="genBtn">產生考卷</button>
-      <button class="btn ghost" id="reshuffleBtn" title="重新抽選哪些字進第一／第三大題">重新抽題</button>
+      <button class="btn ghost" id="reshuffleBtn" title="重新抽選並洗牌（例句庫重用，不重打 AI）">重新抽題</button>
     </div>
     <div class="status" id="status"></div>
   </aside>
@@ -281,34 +320,34 @@
   <!-- ===== 考卷預覽 ===== -->
   <main class="stage">
     <div class="stage-bar">
-      <div class="view-toggle" id="viewToggle">
-        <button data-view="q" class="on">題目卷</button>
-        <button data-view="a">答案卷</button>
+      <div class="left">
+        <div class="view-toggle" id="viewToggle">
+          <button data-view="q" class="on">題目卷</button>
+          <button data-view="a">答案卷</button>
+        </div>
+        <select id="verSel" style="display:none"></select>
       </div>
-      <button class="btn ghost" id="printBtn" style="width:auto;padding:9px 18px">🖨️ 列印目前頁面</button>
+      <div class="print-row">
+        <button class="btn ghost" id="printBtn" style="width:auto;padding:9px 16px">🖨️ 列印這一卷</button>
+        <button class="btn ghost" id="printAllBtn" style="width:auto;padding:9px 16px;display:none">🖨️ 列印全部版本</button>
+      </div>
     </div>
     <div class="paper empty" id="paper">填好左側單字表後，按「產生考卷」即可在這裡預覽。</div>
   </main>
 
 </div>
 
+<div id="printArea"></div>
+
 <script>
 (function(){
   "use strict";
 
-  const SAMPLE =
-`apple 蘋果
-teacher 老師
-happy 快樂的
-run 跑步
-because 因為
-school 學校
-beautiful 美麗的
-listen 傾聽
-family 家庭
-because 因為`;
+  const $ = id => document.getElementById(id);
+  const ORD = '甲乙丙丁戊己庚辛壬癸';
+  const ordName = i => (i<ORD.length ? ORD[i] : (i+1)) + '卷';
 
-  // 預填一份不重複的範例
+  // 預填一份不重複的範例（首次使用；之後記住上次的單字）
   const sampleClean =
 `apple 蘋果
 teacher 老師
@@ -325,14 +364,19 @@ quiet 安靜的
 invite 邀請
 weather 天氣
 ready 準備好的`;
-  document.getElementById('words').value = sampleClean;
 
-  const $ = id => document.getElementById(id);
-  let state = { source:'ai', view:'q', quiz:null };
+  let state = {
+    sentSource:'ai',   // ai | photo | manual（第二大題句子來源）
+    view:'q',          // q | a
+    versions:[],       // 多卷：每卷 {sec1, sec3, sec2, bank}
+    curVer:0,
+    bank:{},           // 例句庫：wordLower -> {sentence, sentenceRaw?, answer, _manual?}
+    words:[],          // 目前解析出的單字
+    total:100,
+    includeFill:true
+  };
 
   /* ---------- 解析單字表 ---------- */
-  // 以「第一個中日文字元」為界：之前是英文，之後是中文
-  const CJK = /[\u4e00-\u9fff\u3040-\u30ff\uff00-\uffef]/;
   function parseWords(raw){
     const out = [];
     raw.split(/\r?\n/).forEach(line=>{
@@ -345,7 +389,6 @@ ready 準備好的`;
         if(en && zh) out.push({en, zh});
       }
     });
-    // 去重（以英文為主鍵）
     const seen = new Set(), uniq = [];
     out.forEach(w=>{ const k=w.en.toLowerCase(); if(!seen.has(k)){seen.add(k);uniq.push(w);} });
     return uniq;
@@ -353,33 +396,74 @@ ready 準備好的`;
 
   function shuffle(a){ const r=a.slice(); for(let i=r.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[r[i],r[j]]=[r[j],r[i]];} return r; }
 
+  const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  /* ---------- localStorage：金鑰、上次單字、單字書 ---------- */
+  try{
+    const sk=localStorage.getItem('vq_gemini_key');   if(sk) $('geminiKey').value=sk;
+    const sm=localStorage.getItem('vq_gemini_model'); if(sm) $('geminiModel').value=sm;
+  }catch(_){}
+  let lastWords='';
+  try{ lastWords=localStorage.getItem('vq_last_words')||''; }catch(_){}
+  $('words').value = lastWords || sampleClean;
+
+  function saveLastWords(){ try{ localStorage.setItem('vq_last_words',$('words').value); }catch(_){} }
+  $('words').addEventListener('change', ()=>{ saveLastWords(); if(state.sentSource==='manual') buildManualInputs(); });
+
+  function getLists(){ try{ return JSON.parse(localStorage.getItem('vq_lists')||'{}'); }catch(_){ return {}; } }
+  function setLists(o){ try{ localStorage.setItem('vq_lists', JSON.stringify(o)); }catch(_){} }
+  function refreshListSel(sel){
+    const s=$('listSel'), o=getLists(), names=Object.keys(o);
+    s.innerHTML='<option value="">— 已存單字書 —</option>'+names.map(n=>`<option${n===sel?' selected':''}>${esc(n)}</option>`).join('');
+  }
+  refreshListSel();
+  $('saveListBtn').addEventListener('click', ()=>{
+    const def = ($('qInfo').value.trim()||'單字書')+' '+new Date().toISOString().slice(5,10);
+    const name=(window.prompt('單字書名稱：', def)||'').trim();
+    if(!name) return;
+    const o=getLists(); o[name]=$('words').value; setLists(o); refreshListSel(name);
+  });
+  $('loadListBtn').addEventListener('click', ()=>{
+    const name=$('listSel').value; if(!name) return;
+    const o=getLists(); if(o[name]!=null){ $('words').value=o[name]; saveLastWords(); if(state.sentSource==='manual') buildManualInputs(); }
+  });
+  $('delListBtn').addEventListener('click', ()=>{
+    const name=$('listSel').value; if(!name) return;
+    if(!window.confirm('刪除單字書「'+name+'」？')) return;
+    const o=getLists(); delete o[name]; setLists(o); refreshListSel();
+  });
+
   /* ---------- 切換句子來源 ---------- */
   $('srcSeg').addEventListener('click', e=>{
     const b = e.target.closest('button'); if(!b) return;
-    state.source = b.dataset.src;
+    state.sentSource = b.dataset.src;
     [...$('srcSeg').children].forEach(c=>c.classList.toggle('on', c===b));
-    $('aiBox').style.display     = state.source==='ai' ? '' : 'none';
-    $('manualBox').style.display = state.source==='manual' ? '' : 'none';
-    $('photoSrcBox').style.display = state.source==='photo' ? '' : 'none';
-    if(state.source==='manual') buildManualInputs();
+    $('aiBox').style.display     = state.sentSource==='ai' ? '' : 'none';
+    $('manualBox').style.display = state.sentSource==='manual' ? '' : 'none';
+    $('photoSrcBox').style.display = state.sentSource==='photo' ? '' : 'none';
+    if(state.sentSource==='manual') buildManualInputs();
   });
 
+  // 手動例句：每個單字一欄（可跨卷、跨重新抽題重用）
   function buildManualInputs(){
-    const n = Math.max(1, parseInt($('n1').value)||5);
-    const box = $('manualInputs');
-    const old = [...box.querySelectorAll('input')].map(i=>i.value);
-    box.innerHTML='';
-    for(let i=0;i<n;i++){
-      const row = document.createElement('div');
-      row.className='sent-input';
-      row.innerHTML = `<span class="num">第 ${i+1} 句</span>`;
-      const inp = document.createElement('input');
-      inp.type='text'; inp.placeholder='I have an ___ in my bag.';
-      if(old[i]) inp.value=old[i];
-      row.appendChild(inp); box.appendChild(row);
-    }
+    const box=$('manualInputs'); box.innerHTML='';
+    state.words = parseWords($('words').value);
+    if(!state.words.length){ box.innerHTML='<div class="hint">先在上方填入單字，這裡會自動列出每個單字的例句欄位。</div>'; return; }
+    state.words.forEach(w=>{
+      const key=w.en.toLowerCase();
+      const row=document.createElement('div'); row.className='sent-input';
+      const num=document.createElement('span'); num.className='num'; num.textContent=w.en; num.title=w.en;
+      const inp=document.createElement('input'); inp.type='text'; inp.placeholder='I have an ___ in my bag.';
+      const ex=state.bank[key]; if(ex && ex._manual) inp.value = ex.sentenceRaw || ex.sentence;
+      inp.addEventListener('input', ()=>{
+        const s=inp.value.trim();
+        if(!s){ if(state.bank[key] && state.bank[key]._manual) delete state.bank[key]; return; }
+        let sv=s; if(!/_{2,}/.test(sv)) sv=sv+' ________';
+        state.bank[key]={sentence:sv, sentenceRaw:s, answer:w.en, _manual:true};
+      });
+      row.appendChild(num); row.appendChild(inp); box.appendChild(row);
+    });
   }
-  $('n1').addEventListener('input', ()=>{ if(state.source==='manual') buildManualInputs(); });
 
   /* ---------- Gemini 免費 API ---------- */
   const getKey   = ()=> ($('geminiKey').value||'').trim();
@@ -423,11 +507,6 @@ ready 準備好的`;
     return JSON.parse(t);
   }
 
-  // 金鑰／模型記憶（本機，沙箱中失敗則略過）
-  try{
-    const sk=localStorage.getItem('vq_gemini_key');   if(sk) $('geminiKey').value=sk;
-    const sm=localStorage.getItem('vq_gemini_model'); if(sm) $('geminiModel').value=sm;
-  }catch(_){}
   $('geminiKey').addEventListener('change',()=>{ try{localStorage.setItem('vq_gemini_key',getKey());}catch(_){}});
   $('geminiModel').addEventListener('change',()=>{ try{localStorage.setItem('vq_gemini_model',getModel());}catch(_){}});
   $('testKeyBtn').addEventListener('click', async ()=>{
@@ -439,7 +518,7 @@ ready 準備好的`;
     catch(err){ st.className='status err'; st.textContent='測試失敗：'+err.message; }
   });
 
-  /* ---------- AI 生成句子 ---------- */
+  /* ---------- AI 生成例句（依單字，存入例句庫；只補缺的） ---------- */
   async function aiSentences(words, level){
     const list = words.map(w=>w.en).join(', ');
     const prompt =
@@ -451,10 +530,9 @@ Return ONLY a JSON array, no markdown, no extra text:
 
     const text = await geminiGenerate([{text:prompt}], {json:true, maxTokens:2048, temperature:0.6});
     const arr = parseJsonArray(text);
-    // 依輸入順序對齊；缺漏時補空白句
     return words.map((w,i)=>{
       let s = (arr[i] && arr[i].sentence) || '';
-      if(!/_{2,}/.test(s)){ // 沒空格就把單字挖掉
+      if(!/_{2,}/.test(s)){
         const re = new RegExp('\\b'+w.en.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'\\b','i');
         s = re.test(s) ? s.replace(re,'________') : (s ? s+' ________' : 'Fill in: ________');
       }
@@ -462,34 +540,53 @@ Return ONLY a JSON array, no markdown, no extra text:
     });
   }
 
-  function manualSentences(words){
-    const inputs = [...$('manualInputs').querySelectorAll('input')];
-    return words.map((w,i)=>{
-      let s = (inputs[i] && inputs[i].value.trim()) || '________';
-      if(!/_{2,}/.test(s)) s = s + ' ________';
-      return { sentence:s, answer:w.en };
+  async function ensureAiBank(words, level){
+    const missing = words.filter(w=>{
+      const e=state.bank[w.en.toLowerCase()];
+      return !e || !/_{2,}/.test(e.sentence||'');
     });
+    if(!missing.length) return;
+    const got = await aiSentences(missing, level);
+    missing.forEach((w,i)=>{ state.bank[w.en.toLowerCase()]={sentence:got[i].sentence, answer:got[i].answer}; });
   }
 
-  // 拍照辨識取得的課本例句：key = 小寫英文headword -> {sentence, answer}
-  let sentenceMap = {};
-  function photoSentences(words){
-    return words.map(w=>{
-      const hit = sentenceMap[w.en.toLowerCase()];
-      if(hit && hit.sentence && /_{2,}/.test(hit.sentence))
-        return { sentence:hit.sentence, answer:hit.answer || w.en };
-      return { sentence:'________', answer:w.en }; // 無對應例句時留空白
+  // 由例句庫取句子（無則留空白）
+  function sentenceFor(w){
+    const e = state.bank[w.en.toLowerCase()];
+    if(e && /_{2,}/.test(e.sentence||'')) return { sentence:e.sentence, answer:e.answer||w.en };
+    return { sentence:'________', answer:w.en };
+  }
+
+  /* ---------- 配分：整數分配，總和恰為 total ---------- */
+  function allocate(total, counts){ // counts=[n1, fill?n1:0, n3]
+    const idx = counts.map((c,i)=>c>0?i:-1).filter(i=>i>=0);
+    const k = idx.length||1;
+    const base=Math.floor(total/k), r0=total-base*k;
+    const secPts={}, perItem={};
+    idx.forEach((i,j)=>{ secPts[i]=base+(j<r0?1:0); });
+    idx.forEach(i=>{
+      const c=counts[i], p=secPts[i], b=Math.floor(p/c), r=p-b*c;
+      perItem[i]=Array.from({length:c},(_,j)=>b+(j<r?1:0));
     });
+    return {secPts, perItem};
+  }
+  function ptsText(i, alloc){
+    const p=alloc.secPts[i], arr=alloc.perItem[i];
+    const mn=Math.min(...arr), mx=Math.max(...arr);
+    return `本大題 ${p} 分・每格 ${mn===mx?mn:mn+'～'+mx} 分`;
   }
 
   /* ---------- 產生 ---------- */
-  let lastPool = null; // 記住目前抽到的字，供「重新抽題」用
   async function generate(reshuffleOnly){
     const status = $('status');
-    let genNote='';
     const words = parseWords($('words').value);
+    state.words = words;
     const n1 = Math.max(1, parseInt($('n1').value)||5);
     const n3 = Math.max(0, parseInt($('n3').value)||0);
+    const copies = Math.min(6, Math.max(1, parseInt($('copies').value)||1));
+    const total = Math.max(1, parseInt($('total').value)||100);
+    const includeFill = $('incFill').checked;
+    state.total=total; state.includeFill=includeFill;
 
     if(words.length < n1+n3){
       status.className='status err';
@@ -497,21 +594,12 @@ Return ONLY a JSON array, no markdown, no extra text:
       return;
     }
 
-    let pool;
-    if(reshuffleOnly && lastPool){ pool = shuffle(words); }
-    else { pool = shuffle(words); }
-    lastPool = words;
-
-    const sec1 = pool.slice(0, n1);
-    const sec3 = pool.slice(n1, n1+n3);
-
-    // 第二大題句子
-    let sec2;
-    if(state.source==='ai'){
+    // 第二大題句子：AI 需先把「所有單字」的例句補齊（多卷任何字都可能被抽到）
+    if(includeFill && state.sentSource==='ai'){
       $('genBtn').disabled=true; $('reshuffleBtn').disabled=true;
-      status.className='status'; status.innerHTML='<span class="spinner"></span>AI 正在生成句子…';
+      status.className='status'; status.innerHTML='<span class="spinner"></span>AI 正在生成例句…';
       try{
-        sec2 = await aiSentences(sec1, $('level').value);
+        await ensureAiBank(words, $('level').value);
       }catch(err){
         status.className='status err';
         status.textContent='AI 生成失敗（'+err.message+'）。請確認 Gemini 金鑰與網路，或改用「自己輸入」模式。';
@@ -519,43 +607,54 @@ Return ONLY a JSON array, no markdown, no extra text:
         return;
       }
       $('genBtn').disabled=false; $('reshuffleBtn').disabled=false;
-    } else if(state.source==='photo'){
-      sec2 = photoSentences(sec1);
-      const missing = sec2.filter(s=>s.sentence==='________').length;
-      if(missing) genNote=`（${missing} 個字無課本例句，已留空白行，可「重新抽題」換字或補拍）`;
-    } else {
-      sec2 = manualSentences(sec1);
     }
 
-    state.quiz = {
-      title: $('qTitle').value.trim() || '英文單字小考',
-      info:  $('qInfo').value.trim(),
-      sec1, sec2, sec3,
-      bank: shuffle(sec1.map(w=>w.en))
-    };
+    // 建立各卷
+    const versions=[];
+    for(let c=0;c<copies;c++){
+      const pool = shuffle(words);
+      const sec1 = pool.slice(0, n1);
+      const sec3 = pool.slice(n1, n1+n3);
+      const sec2 = includeFill ? sec1.map(sentenceFor) : [];
+      versions.push({ sec1, sec3, sec2, bank: shuffle(sec1.map(w=>w.en)) });
+    }
+    state.versions = versions;
+    state.curVer = 0;
+
+    // 版本切換選單
+    const verSel=$('verSel');
+    if(copies>1){
+      verSel.innerHTML = versions.map((v,i)=>`<option value="${i}">${ordName(i)}</option>`).join('');
+      verSel.style.display=''; $('printAllBtn').style.display='';
+    }else{
+      verSel.style.display='none'; $('printAllBtn').style.display='none';
+    }
+
     render();
+
+    // 提示：缺例句數（photo/manual）
+    let note='';
+    if(includeFill && state.sentSource!=='ai'){
+      const miss = versions[0].sec2.filter(s=>s.sentence==='________').length;
+      if(miss) note=`（本卷 ${miss} 個字無例句，已留空白行，可「重新抽題」換字或補例句）`;
+    }
     status.className='status ok';
-    status.textContent='完成！可切換「題目卷／答案卷」並列印。'+(genNote?'　'+genNote:'');
+    status.textContent=(copies>1?`已產生 ${copies} 卷（甲／乙…）。`:'完成！')+'可切換「題目卷／答案卷」與版本並列印。'+(note?'　'+note:'');
   }
 
   $('genBtn').addEventListener('click', ()=>generate(false));
-  $('reshuffleBtn').addEventListener('click', ()=>{
-    if(!state.quiz && state.source==='ai'){ generate(false); return; }
-    generate(true);
-  });
+  $('reshuffleBtn').addEventListener('click', ()=>generate(true));
 
-  /* ---------- 切換題目／答案 ---------- */
+  /* ---------- 切換題目／答案、版本 ---------- */
   $('viewToggle').addEventListener('click', e=>{
     const b=e.target.closest('button'); if(!b) return;
     state.view=b.dataset.view;
     [...$('viewToggle').children].forEach(c=>c.classList.toggle('on',c===b));
     render();
   });
+  $('verSel').addEventListener('change', e=>{ state.curVer=parseInt(e.target.value)||0; render(); });
 
   /* ---------- 渲染考卷 ---------- */
-  const esc = s => (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-
-  // 雙排格：上排題目、下排空格（答案卷以紅字填入）。超過 5 欄自動換下一組。
   function gridTable(items, showAns){
     let out='';
     const multi = items.length>5;
@@ -572,13 +671,15 @@ Return ONLY a JSON array, no markdown, no extra text:
     return out;
   }
 
-  function render(){
-    const q = state.quiz, paper = $('paper');
-    if(!q){ paper.className='paper empty'; paper.textContent='填好左側單字表後，按「產生考卷」即可在這裡預覽。'; return; }
-    const ans = state.view==='a';
-    paper.className='paper';
+  // 產生一份考卷的 HTML（verIdx 用於顯示卷別；單卷時傳 -1 不顯示）
+  function buildPaper(ver, showAns, verIdx){
+    const q = {
+      title: $('qTitle').value.trim() || '英文單字小考',
+      info:  $('qInfo').value.trim()
+    };
+    const n1=ver.sec1.length, n3=ver.sec3.length;
+    const alloc = allocate(state.total, [n1, state.includeFill?n1:0, n3]);
 
-    // 卷頭
     let html = `
       <div class="ph-head">
         <div class="cell"><b>班級</b> <span class="ln"></span></div>
@@ -586,57 +687,76 @@ Return ONLY a JSON array, no markdown, no extra text:
         <div class="cell"><b>姓名</b> <span class="ln"></span></div>
         <div class="cell score"><b>分數</b> <span class="ln"></span></div>
       </div>
-      <div class="ph-title">${esc(q.title)}${ans?'　（答案卷）':''}</div>
+      <div class="ph-title">${esc(q.title)}${verIdx>=0?`<span class="ver">（${ordName(verIdx)}）</span>`:''}${showAns?'　（答案卷）':''}</div>
       ${q.info?`<div class="ph-sub">${esc(q.info)}</div>`:''}
     `;
 
     // 第一大題
     html += `
       <div class="q">
-        <div class="q-h">一、看英文寫中文 <span class="pts">（每格 ${pt(q.sec1.length)}）</span></div>
+        <div class="q-h">一、看英文寫中文 <span class="pts">（${ptsText(0,alloc)}）</span></div>
         <div class="q-desc">請在下方空格寫出對應的中文意思。</div>
-        ${gridTable(q.sec1.map(w=>({top:w.en, ans:w.zh})), ans)}
+        ${gridTable(ver.sec1.map(w=>({top:w.en, ans:w.zh})), showAns)}
       </div>`;
 
     // 第二大題
-    const bank = q.bank.map(w=>`<span class="w">${esc(w)}</span>`).join('');
-    let s2items='';
-    q.sec2.forEach(it=>{
-      const parts = it.sentence.split(/_{2,}/);
-      const blank = ans
-        ? `<span class="blank"><span class="ans">${esc(it.answer)}</span></span>`
-        : `<span class="blank">&nbsp;</span>`;
-      const sentenceHtml = parts.map(esc).join(blank);
-      s2items += `<li>${sentenceHtml}</li>`;
-    });
-    html += `
-      <div class="q">
-        <div class="q-h">二、句子填空 <span class="pts">（每題 ${pt(q.sec2.length)}）</span></div>
-        <div class="q-desc">從下列單字選出正確的字填入空格（單字僅能使用一次）。</div>
-        <div class="wordbank"><span class="wb-label">單字庫</span>${bank}</div>
-        <ol class="s2">${s2items}</ol>
-      </div>`;
-
-    // 第三大題
-    if(q.sec3.length){
+    if(state.includeFill){
+      const bank = ver.bank.map(w=>`<span class="w">${esc(w)}</span>`).join('');
+      let s2items='';
+      ver.sec2.forEach(it=>{
+        const parts = it.sentence.split(/_{2,}/);
+        const blank = showAns
+          ? `<span class="blank"><span class="ans">${esc(it.answer)}</span></span>`
+          : `<span class="blank">&nbsp;</span>`;
+        s2items += `<li>${parts.map(esc).join(blank)}</li>`;
+      });
       html += `
         <div class="q">
-          <div class="q-h">三、看中文寫英文 <span class="pts">（每格 ${pt(q.sec3.length)}）</span></div>
+          <div class="q-h">二、句子填空 <span class="pts">（${ptsText(1,alloc)}）</span></div>
+          <div class="q-desc">從下列單字選出正確的字填入空格（單字僅能使用一次）。</div>
+          <div class="wordbank"><span class="wb-label">單字庫</span>${bank}</div>
+          <ol class="s2">${s2items}</ol>
+        </div>`;
+    }
+
+    // 第三大題
+    if(n3){
+      html += `
+        <div class="q">
+          <div class="q-h">三、看中文寫英文 <span class="pts">（${ptsText(2,alloc)}）</span></div>
           <div class="q-desc">請在下方空格寫出對應的英文單字。</div>
-          ${gridTable(q.sec3.map(w=>({top:w.zh, ans:w.en})), ans)}
+          ${gridTable(ver.sec3.map(w=>({top:w.zh, ans:w.en})), showAns)}
         </div>`;
     }
 
     html += `<div class="foot-note">— 試題結束，請檢查作答 —</div>`;
-    paper.innerHTML = html;
+    return html;
   }
 
-  // 平均配分（總分 100，三大題均分到題目）
-  function pt(n){ return n? Math.round((100/3)/n*10)/10 +' 分' : '0 分'; }
+  function render(){
+    const paper=$('paper');
+    if(!state.versions.length){ paper.className='paper empty'; paper.textContent='填好左側單字表後，按「產生考卷」即可在這裡預覽。'; return; }
+    paper.className='paper';
+    const multi = state.versions.length>1;
+    paper.innerHTML = buildPaper(state.versions[state.curVer], state.view==='a', multi?state.curVer:-1);
+  }
 
+  /* ---------- 列印 ---------- */
   $('printBtn').addEventListener('click', ()=>{
-    if(!state.quiz){ $('status').className='status err'; $('status').textContent='請先產生考卷再列印。'; return; }
-    window.print();
+    if(!state.versions.length){ $('status').className='status err'; $('status').textContent='請先產生考卷再列印。'; return; }
+    window.print(); // 列印目前 #paper（單一卷、目前題目／答案）
+  });
+
+  $('printAllBtn').addEventListener('click', ()=>{
+    if(state.versions.length<2) return;
+    const showAns = state.view==='a';
+    const area=$('printArea');
+    area.innerHTML = state.versions.map((v,i)=>`<div class="paper">${buildPaper(v, showAns, i)}</div>`).join('');
+    document.body.classList.add('print-batch');
+    const done=()=>{ document.body.classList.remove('print-batch'); area.innerHTML=''; window.removeEventListener('afterprint',done); };
+    window.addEventListener('afterprint',done);
+    setTimeout(()=>{ try{window.print();}catch(_){ done(); } }, 60);
+    setTimeout(()=>{ if(document.body.classList.contains('print-batch')) done(); }, 60000); // 保險
   });
 
   /* ---------- 拍照辨識單字 ---------- */
@@ -645,7 +765,6 @@ Return ONLY a JSON array, no markdown, no extra text:
     [...$('wordSrcSeg').children].forEach(c=>c.classList.toggle('on', c===b));
     const photo = b.dataset.wsrc==='photo';
     $('photoBox').style.display = photo ? '' : 'none';
-    // 第一次切到拍照、且還是預設範例時，清空讓辨識結果乾淨呈現
     if(photo && $('words').value.trim()===sampleClean.trim()) $('words').value='';
   });
 
@@ -712,7 +831,7 @@ Return ONLY a JSON array, no markdown, no extra text:
           if(!en||!zh) return;
           lines.push(en+' '+zh);
           if(it.sentence && /_{2,}/.test(it.sentence)){
-            sentenceMap[en.toLowerCase()]={sentence:it.sentence.trim(), answer:(it.answer||en).trim()};
+            state.bank[en.toLowerCase()]={sentence:it.sentence.trim(), answer:(it.answer||en).trim()};
             withSent++;
           }
           added++;
@@ -722,6 +841,7 @@ Return ONLY a JSON array, no markdown, no extra text:
         const fresh = lines.filter(l=>{ const p=parseWords(l)[0]; return p && !existing.has(p.en.toLowerCase()); });
         if(fresh.length) ta.value = (ta.value.trim()? ta.value.replace(/\s*$/,'')+'\n' : '') + fresh.join('\n');
       }
+      saveLastWords();
       st.className='status ok'; st.textContent=`辨識完成：新增 ${added} 個單字，其中 ${withSent} 個有課本例句。`;
       const photoBtn=[...$('srcSeg').children].find(b=>b.dataset.src==='photo');
       if(photoBtn) photoBtn.click(); // 自動切到「課本例句」
@@ -731,8 +851,13 @@ Return ONLY a JSON array, no markdown, no extra text:
     $('ocrBtn').disabled=false;
   });
 
-  // 初始：依預設來源建立手動輸入框（隱藏狀態也先備好）
+  // 初始化
   buildManualInputs();
+
+  /* ---------- PWA：離線安裝（僅 http(s) 下註冊） ---------- */
+  if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
+    window.addEventListener('load', ()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+  }
 })();
 </script>
 </body>

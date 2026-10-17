@@ -1,0 +1,16 @@
+{
+  "name": "單字測驗生成器",
+  "short_name": "單字測驗",
+  "description": "自動產生三大題英文單字考卷與答案卷，支援多卷防作弊、AI 例句、拍照辨識。",
+  "lang": "zh-Hant",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#eef1f4",
+  "theme_color": "#0f766e",
+  "icons": [
+    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
